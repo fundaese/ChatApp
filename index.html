@@ -1,0 +1,215 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Funda's Chat Application</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { padding: 3px; position: fixed; bottom: 0; width: 80%; }
+      form input { border: 0; padding: 10px; width: 100%; margin-right: 0.5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 0; padding: 0; width: 100%;}
+      #messages li { padding: 5px 10px;}
+      #messages li:nth-child(odd) { background: #eee;}
+
+      button, div.filebutton {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+        display: inline-block;
+        text-decoration: none;
+        background: #00b5d6;
+        border: 1px solid #00a5c3;
+        -webkit-border-radius: 7px;
+        -moz-border-radius: 7px;
+        border-radius: 7px;
+        color: #fff;
+        box-shadow: inset 0 1px 1px rgba(255, 255, 255, .6),
+                    inset 0 0 10px #008da7;
+        font: 600 1.3em/1.7em "helvetica neue", helvetica, arial, sans-serif;
+        text-align: center;
+        text-shadow: 0 1px 1px #006679;
+        cursor: pointer;
+        padding: 2px 0 2px 0;
+        line-height: 1;
+      }
+
+      button:hover, div.filebutton:hover,
+      button.hover, div.filebutton.hover,
+      button:active,
+      button:focus, {
+        background: #009cb8;
+        box-shadow: inset 0 1px 1px rgba(255, 255, 255, .7),
+                   inset 0 0 10px #007287;
+      }
+      .buttons{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .send{
+        margin: 3px;
+        height: 30px;
+        background: #2F67B3;
+      }
+
+      div.filebutton {
+        width: 9%;
+        background: #2F67B3;
+        border: none;
+        margin: 3px;
+        height: 30px;
+        padding-top: 8px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      div.filebutton input#imagefile {
+        position: absolute;
+        margin: 0;
+        top: 0;
+        left: 0;
+        padding: 0;
+        width: 100px;
+        opacity: 0;
+      }
+
+      img{
+        height: 200px;
+        width: 200px;
+      }
+
+      #message{
+         border-style: solid; border-width: thin;
+      }
+      #fixed
+      {
+        float: right;
+        display: flex;
+        flex-direction: column;
+        background: #2F67B3;
+        width:20%;
+        height: 660px;
+        overflow: hidden;
+        text-align: center;
+      }
+      #fixed h2{
+        color: white;
+      }
+      #sag
+      {
+          height: 100%;
+          overflow: hidden;
+          float: right;
+          width:100%;
+      }
+      #aktif {
+        list-style: circle;
+        padding: 10px;
+        background: #E4EEFC;
+        color: #1DCA2F!important;
+        font-weight: bold;
+        border-style: solid;
+        border-radius: 8%;
+        border-width:thin;
+        border-color: #3822F7;
+      }
+      a{
+        text-decoration: none;
+        color: #2005FC;
+      }
+
+    </style>
+  </head>
+  <body>
+
+    <div class="" style="float:left">
+    <ul id="messages"></ul>
+
+    <form id="send-message">
+        <input id="message" type="text"/>
+        <div class="buttons">
+          <button value="" class="send">Send</button>
+          <div class="filebutton">Send Image<input type="file" id="imagefile" accept="image/*"></div>
+        </div>
+    </form>
+
+    </div>
+    <div id="fixed">
+           <h2>Çevrimiçi Kullanıcılar</h2>
+      <div id="sag">
+      </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+    <script>
+
+    var socket = io();
+    function mesajGonder(to)
+    {
+      let message= prompt('Mesajinizi giriniz');
+
+      socket.emit('sendPrivate', {
+        'message':message,
+        'to':to
+    });
+    }
+      $(function () {
+        var sagtaraf = document.getElementById('sag');
+        var kullanici = prompt('Kullanici adinizi giriniz');
+
+
+        socket.emit('yeniGiris', kullanici);
+        socket.on('users', function (data) {
+          console.log(data)
+          sagtaraf.innerHTML = ""
+          data.forEach(element => {
+              if(element.isim!=kullanici)
+                  sagtaraf.innerHTML = sagtaraf.innerHTML + `<li id='aktif' class='${element.socket_id}' > ${element.isim} <a href="#" onclick="return mesajGonder('${element.socket_id}')">mesaj gönder</a></li>`;
+              else
+                  sagtaraf.innerHTML = sagtaraf.innerHTML + `<li id='aktif' class='${element.socket_id}'> ${element.isim}</li>`;
+
+          });
+        })
+      socket.on('getPrivate', function (data)
+      {
+        alert(`${data.gonderen} kisisinden Mesaj geldi: ${data.message}`);
+      })
+        $('form').submit(function(e){
+          e.preventDefault(); // prevents page reloading
+          socket.emit('chat message',{'message': $('#message').val(),'person':kullanici});
+          $('#message').val('');
+          return false;
+        });
+
+        socket.on('chat message', function(jsonString){
+          console.log(jsonString);
+         document.getElementById('messages').innerHTML +='<li><strong>'+jsonString.person+':</strong> '+ jsonString.message;
+        });
+
+        socket.on('addimage',function(msg,base64image){
+            $('#messages').append($('<li>').append($('<b>').text(msg),'<a target="_blank" href="'+ base64image +'"><img src="'+ base64image +'"/></a>'));
+        });
+
+        $(function(){
+          $("#imagefile").on('change',function(e){
+            var file = e.originalEvent.target.files[0];
+            var reader = new FileReader();
+            reader.onload = function(evt){
+              var sendedObject = {
+                "image" : evt.target.result,
+                "hashmessage" : $('#message').val()
+              };
+
+              console.log(sendedObject);
+              socket.emit('user image', JSON.stringify(sendedObject));
+            };
+            reader.readAsDataURL(file);
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
